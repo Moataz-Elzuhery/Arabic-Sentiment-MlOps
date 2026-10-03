@@ -1,0 +1,14 @@
+base_model: aubmindlab/bert-base-arabertv02
+train_path: data/processed/train.csv
+val_path: data/processed/val.csv
+test_path: data/processed/test.csv
+output_dir: models/v1
+model_version: v1
+max_length: 128
+learning_rate: 3.0e-5
+batch_size: 16
+epochs: 2
+weight_decay: 0.01
+warmup_ratio: 0.1
+seed: 42
+max_samples: null   # للـsmoke test: مثلاً 200

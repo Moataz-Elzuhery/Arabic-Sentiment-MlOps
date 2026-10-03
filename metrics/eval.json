@@ -1,0 +1,10 @@
+{
+  "n_samples": 200,
+  "accuracy": 0.605,
+  "f1_macro": 0.2513,
+  "per_class_f1": {
+    "negative": 0.0,
+    "neutral": 0.0,
+    "positive": 0.7539
+  }
+}

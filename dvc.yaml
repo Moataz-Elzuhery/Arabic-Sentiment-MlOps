@@ -1,0 +1,39 @@
+stages:
+  prepare:
+    cmd: python -m scripts.prepare_data --input data/raw/unbalanced-reviews.txt --encoding utf-16 --text-col review --rating-col rating --outdir data/processed
+    deps:
+      - data/raw/unbalanced-reviews.txt
+      - scripts/prepare_data.py
+      - src/preprocessing.py
+    outs:
+      - data/processed
+  train:
+    cmd: >-
+      python -m src.train --config configs/train.yaml --output-dir models/pipeline --model-version pipeline
+      --learning-rate ${train.learning_rate} --batch-size ${train.batch_size}
+      --epochs ${train.epochs} --max-samples ${train.max_samples}
+    deps:
+      - data/processed
+      - src/train.py
+      - src/model.py
+      - src/preprocessing.py
+      - configs/train.yaml
+    params:
+      - train
+    outs:
+      - models/pipeline
+  evaluate:
+    cmd: >-
+      python -m src.evaluate --model-dir models/pipeline --test-path data/processed/test.csv
+      --output metrics/eval.json --max-samples ${evaluate.max_samples} --batch-size ${evaluate.batch_size}
+    deps:
+      - models/pipeline
+      - data/processed/test.csv
+      - src/evaluate.py
+      - src/model.py
+      - src/preprocessing.py
+    params:
+      - evaluate
+    metrics:
+      - metrics/eval.json:
+          cache: false

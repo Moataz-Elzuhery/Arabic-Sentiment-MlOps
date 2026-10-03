@@ -1,0 +1,100 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python -m scripts.prepare_data --input data/raw/unbalanced-reviews.txt 
+      --encoding utf-16 --text-col review --rating-col rating --outdir 
+      data/processed
+    deps:
+    - path: data/raw/unbalanced-reviews.txt
+      hash: md5
+      md5: 252b5357f44b49ba5b57efa5970158ee
+      size: 159337424
+    - path: scripts/prepare_data.py
+      hash: md5
+      md5: 2615bc4b778d16abf57c931611d2c951
+      size: 2747
+    - path: src/preprocessing.py
+      hash: md5
+      md5: a0d0e28b5370897d600f6aa7a643ba9a
+      size: 894
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: cf578227032f35b5b1343f617286ebd6.dir
+      size: 97079237
+      nfiles: 3
+  train:
+    cmd: python -m src.train --config configs/train.yaml --output-dir 
+      models/pipeline --model-version pipeline --learning-rate 3e-05 
+      --batch-size 16 --epochs 1 --max-samples 200
+    deps:
+    - path: configs/train.yaml
+      hash: md5
+      md5: 281fc5d893a51747e794a644ef0d9bff
+      size: 353
+    - path: data/processed
+      hash: md5
+      md5: cf578227032f35b5b1343f617286ebd6.dir
+      size: 97079237
+      nfiles: 3
+    - path: src/model.py
+      hash: md5
+      md5: d9bcd4050a214ed2ba5d52cb432e6ef7
+      size: 674
+    - path: src/preprocessing.py
+      hash: md5
+      md5: a0d0e28b5370897d600f6aa7a643ba9a
+      size: 894
+    - path: src/train.py
+      hash: md5
+      md5: 57a9aa0c945a4053bbc8c2611332ced1
+      size: 5452
+    params:
+      params.yaml:
+        train:
+          learning_rate: 3e-05
+          batch_size: 16
+          epochs: 1
+          max_samples: 200
+    outs:
+    - path: models/pipeline
+      hash: md5
+      md5: 6c002a6d8995e48eaf71c3afa87e19b9.dir
+      size: 542590286
+      nfiles: 6
+  evaluate:
+    cmd: python -m src.evaluate --model-dir models/pipeline --test-path 
+      data/processed/test.csv --output metrics/eval.json --max-samples 200 
+      --batch-size 32
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: a5b51c637b13155a08affe4c9779fd0a
+      size: 9719777
+    - path: models/pipeline
+      hash: md5
+      md5: 6c002a6d8995e48eaf71c3afa87e19b9.dir
+      size: 542590286
+      nfiles: 6
+    - path: src/evaluate.py
+      hash: md5
+      md5: 524331a65555b4d3e6a30d23cc429024
+      size: 2392
+    - path: src/model.py
+      hash: md5
+      md5: d9bcd4050a214ed2ba5d52cb432e6ef7
+      size: 674
+    - path: src/preprocessing.py
+      hash: md5
+      md5: a0d0e28b5370897d600f6aa7a643ba9a
+      size: 894
+    params:
+      params.yaml:
+        evaluate:
+          max_samples: 200
+          batch_size: 32
+    outs:
+    - path: metrics/eval.json
+      hash: md5
+      md5: 8aa8c87ff248c04fb76e4e9ec048c249
+      size: 163
