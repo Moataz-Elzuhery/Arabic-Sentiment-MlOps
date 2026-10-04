@@ -1,0 +1,11 @@
+{
+  "model_version": "v1",
+  "base_model": "aubmindlab/bert-base-arabertv02",
+  "accuracy": 0.8979229673323502,
+  "f1_macro": 0.8474307083226716,
+  "per_class_f1": {
+    "negative": 0.8343,
+    "neutral": 0.758,
+    "positive": 0.95
+  }
+}
