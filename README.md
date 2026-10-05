@@ -35,3 +35,5 @@ curl localhost:8000/health
 | Model | Accuracy | F1 macro |
 |-------|----------|----------|
 | AraBERT v02 (v1) | 0.898 | 0.847 |
+
+<!-- ci test -->
