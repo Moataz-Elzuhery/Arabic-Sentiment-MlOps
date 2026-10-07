@@ -1,0 +1,12 @@
+{
+  "label": "sat_bento",
+  "users": 10,
+  "duration_s": 60,
+  "requests": 1061,
+  "failures": 0,
+  "rps": 18.37,
+  "avg_ms": 546.3,
+  "p50_ms": 390.0,
+  "p95_ms": 510.0,
+  "p99_ms": 730.0
+}

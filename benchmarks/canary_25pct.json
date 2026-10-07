@@ -1,0 +1,28 @@
+[
+  {
+    "label": "canary_25pct",
+    "name": "/predict [v1]",
+    "users": 10,
+    "duration_s": 60,
+    "requests": 754,
+    "failures": 0,
+    "rps": 13.85,
+    "avg_ms": 241.9,
+    "p50_ms": 220.0,
+    "p95_ms": 450.0,
+    "p99_ms": 550.0
+  },
+  {
+    "label": "canary_25pct",
+    "name": "/predict [v2]",
+    "users": 10,
+    "duration_s": 60,
+    "requests": 265,
+    "failures": 0,
+    "rps": 4.87,
+    "avg_ms": 194.9,
+    "p50_ms": 170.0,
+    "p95_ms": 340.0,
+    "p99_ms": 970.0
+  }
+]

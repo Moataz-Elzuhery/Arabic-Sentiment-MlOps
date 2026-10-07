@@ -1,0 +1,12 @@
+{
+  "label": "sat_fastapi",
+  "users": 10,
+  "duration_s": 60,
+  "requests": 2308,
+  "failures": 2308,
+  "rps": 433.2,
+  "avg_ms": 20.8,
+  "p50_ms": 17.0,
+  "p95_ms": 27.0,
+  "p99_ms": 190.0
+}

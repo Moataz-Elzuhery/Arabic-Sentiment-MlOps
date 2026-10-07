@@ -13,3 +13,74 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+
+  # BentoML + adaptive batching. Started only on request:
+  #   docker compose --profile bento up -d bento
+  bento:
+    profiles: ["bento"]
+    build:
+      context: .
+      dockerfile: Dockerfile.bento
+    ports:
+      - "3000:3000"
+    environment:
+      MODEL_DIR: /app/models/v1
+      MAX_BATCH_SIZE: "32"
+      MAX_LATENCY_MS: "2000"
+    volumes:
+      - ./models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:3000/readyz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # Canary release: nginx splits traffic between the stable model (v1) and the candidate (v2).
+  #   $env:CANARY_PCT=5; docker compose --profile canary up -d --build
+  #   CANARY_PCT in 1..100;  rollback: $env:CANARY_ENABLED=0; docker compose --profile canary up -d router
+  api_v1:
+    profiles: ["canary"]
+    build: .
+    image: arabic-sentiment-api:local
+    environment:
+      MODEL_DIR: /app/models/v1
+    volumes:
+      - ./models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  api_v2:
+    profiles: ["canary"]
+    build: .
+    image: arabic-sentiment-api:local
+    environment:
+      MODEL_DIR: /app/models/v2
+    volumes:
+      - ./models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  router:
+    profiles: ["canary"]
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    environment:
+      CANARY_PCT: ${CANARY_PCT:-5}
+      CANARY_ENABLED: ${CANARY_ENABLED:-1}
+    volumes:
+      - ./canary/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      api_v1:
+        condition: service_healthy
+      api_v2:
+        condition: service_healthy
