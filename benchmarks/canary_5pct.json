@@ -1,0 +1,15 @@
+[
+  {
+    "label": "canary_5pct",
+    "name": "/predict",
+    "users": 10,
+    "duration_s": 120,
+    "requests": 3482,
+    "failures": 3482,
+    "rps": 31.08,
+    "avg_ms": 13.0,
+    "p50_ms": 12.0,
+    "p95_ms": 22.0,
+    "p99_ms": 120.0
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "label": "bento_batched",
+  "users": 10,
+  "duration_s": 90,
+  "requests": 1771,
+  "failures": 0,
+  "rps": 21.06,
+  "avg_ms": 171.3,
+  "p50_ms": 160.0,
+  "p95_ms": 290.0,
+  "p99_ms": 380.0
+}

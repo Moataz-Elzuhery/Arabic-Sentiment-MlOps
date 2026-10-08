@@ -1,0 +1,12 @@
+{
+  "label": "baseline_fastapi_steady",
+  "users": 10,
+  "duration_s": 90,
+  "requests": 1599,
+  "failures": 0,
+  "rps": 19.06,
+  "avg_ms": 235.6,
+  "p50_ms": 200.0,
+  "p95_ms": 340.0,
+  "p99_ms": 400.0
+}
