@@ -35,6 +35,10 @@ $env:CANARY_ENABLED=0; docker compose --profile canary up -d router
 
 Note: nginx rejects `0%`, so rollback uses `CANARY_ENABLED=0`, not `CANARY_PCT=0`.
 
+Alternative that avoids leftover shell variables: edit `CANARY_PCT` / `CANARY_ENABLED` in `.env`
+and run `docker compose --profile canary up -d router`. (A variable set with `$env:` in the
+current terminal overrides `.env`; remove it with `Remove-Item Env:CANARY_PCT`.)
+
 ## Rollout log (fill in with measured numbers)
 
 | Stage | Share | Observed v2 share | v1 p95 (ms) | v2 p95 (ms) | Failures | Decision |

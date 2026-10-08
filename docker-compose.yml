@@ -4,7 +4,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      MODEL_DIR: /app/models/v1
+      MODEL_DIR: ${API_MODEL_DIR:-/app/models/v1}
     volumes:
       - ./models:/app/models:ro
     healthcheck:
@@ -24,9 +24,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      MODEL_DIR: /app/models/v1
-      MAX_BATCH_SIZE: "32"
-      MAX_LATENCY_MS: "2000"
+      MODEL_DIR: ${API_MODEL_DIR:-/app/models/v1}
+      MAX_BATCH_SIZE: ${MAX_BATCH_SIZE:-32}
+      MAX_LATENCY_MS: ${MAX_LATENCY_MS:-2000}
     volumes:
       - ./models:/app/models:ro
     healthcheck:
@@ -44,7 +44,7 @@ services:
     build: .
     image: arabic-sentiment-api:local
     environment:
-      MODEL_DIR: /app/models/v1
+      MODEL_DIR: ${STABLE_MODEL_DIR:-/app/models/v1}
     volumes:
       - ./models:/app/models:ro
     healthcheck:
@@ -59,7 +59,7 @@ services:
     build: .
     image: arabic-sentiment-api:local
     environment:
-      MODEL_DIR: /app/models/v2
+      MODEL_DIR: ${CANARY_MODEL_DIR:-/app/models/v2}
     volumes:
       - ./models:/app/models:ro
     healthcheck:
