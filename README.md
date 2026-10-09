@@ -7,8 +7,7 @@ served with FastAPI + Docker. Built session by session toward a full MLOps syste
 - [x] Session 1: Model + FastAPI + Docker
 - [ ] Session 2: MLflow + DVC + GitHub Actions
 - [ ] Session 3: BentoML + Locust + Canary
-- [ ] Session 4: Distillation + INT8 + TensorRT + Benchmark
-- [ ] Session 5: Drift + Prometheus + Grafana + Alert
+- [ ] Session 4: Drift + Prometheus + Grafana + Alert
 
 ## Quickstart
 ```bash
