@@ -7,13 +7,15 @@
 [![DVC](https://img.shields.io/badge/data%20versioning-DVC-945DD6)](https://dvc.org/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)](https://fastapi.tiangolo.com/)
 [![BentoML](https://img.shields.io/badge/serving-BentoML-lightgrey)](https://www.bentoml.com/)
+[![Prometheus](https://img.shields.io/badge/monitoring-Prometheus-E6522C)](https://prometheus.io/)
+[![Grafana](https://img.shields.io/badge/dashboards-Grafana-F46800)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/container-Docker-2496ED)](https://www.docker.com/)
 [![AraBERT](https://img.shields.io/badge/model-AraBERT%20v02-FFD21E)](https://huggingface.co/aubmindlab/bert-base-arabertv02)
 
 **Arabic hotel-review sentiment classification (positive / negative / neutral) with an end-to-end
 MLOps pipeline.** AraBERT fine-tuned on the HARD dataset (Modern Standard Arabic and dialects),
-served with FastAPI and BentoML, with MLflow tracking, DVC, a CI/CD quality gate, load testing
-and a canary release.
+served with FastAPI and BentoML, with MLflow tracking, DVC, a CI/CD quality gate, load testing,
+a canary release and drift monitoring (Prometheus, Grafana, Evidently).
 
 The point of the project is the **system around the model**, not a record-breaking score.
 
@@ -27,7 +29,7 @@ The point of the project is the **system around the model**, not a record-breaki
 | CI/CD | GitHub Actions: lint, tests, Docker build, quality gate, push to GHCR | Done |
 | Serving & load testing | Locust baseline, BentoML with adaptive batching | Done |
 | Canary release | nginx 95/5 split, staged rollout, instant rollback | Done |
-| Monitoring | Drift detection (PSI), Prometheus, Grafana, alerts | Planned |
+| Monitoring | PSI drift on input length and confidence, Prometheus, Grafana, alerts, Evidently report | Done |
 
 ## Architecture
 
@@ -42,6 +44,13 @@ HARD reviews --DVC--> prepare --> train --> evaluate           (reproducible pip
         |                           |                            |
    FastAPI :8000              BentoML :3000                nginx router :8080
    (single requests)       (adaptive batching)          95% -> api_v1 / 5% -> api_v2
+        |
+        | /metrics (latency, confidence, text length, PSI)
+        v
+   Prometheus :9090 --alerts--> Alertmanager :9093 --> webhook receiver
+        |
+        v
+   Grafana :3001 (dashboard)         Evidently (HTML drift report)
 
 GitHub Actions: Lint -> Tests -> Build Docker -> Quality gate (F1 vs baseline) -> Push image
 ```
@@ -108,6 +117,7 @@ API contract:
 POST /predict   {"text": "المنتج ممتاز جدًا"}
              -> {"label": "positive", "confidence": 0.94, "model_version": "v1"}
 GET  /health -> {"status": "healthy"}        (503 while the model is not loaded)
+GET  /metrics -> Prometheus metrics
 ```
 
 ## MLOps
@@ -206,6 +216,31 @@ rollout mechanics**; model quality is controlled separately by the quality gate.
 weights, any latency difference between them in the rollout log is noise (small samples at low
 shares, one run per stage), not a model effect.
 
+## Monitoring and drift detection
+
+The FastAPI service exports Prometheus metrics at `/metrics`: request rate and latency, prediction
+labels, the distribution of model **confidence** and of **input text length**, and two drift gauges.
+Drift is the **Population Stability Index (PSI)** of text length and confidence over the last 300
+requests against a reference sample of 2,000 validation reviews scored by the production model
+(`monitoring/reference.csv`). Rule of thumb: PSI below 0.1 is stable, 0.1-0.25 a moderate shift and
+above 0.25 a significant shift. Only lengths, confidences and labels are recorded, never review text.
+
+When PSI stays above **0.25** for a minute, Prometheus fires `DataDriftHigh`; Alertmanager forwards it
+to a webhook receiver, and the alert resolves when traffic returns to normal. There are also alerts
+for API down, 5xx rate and p95 latency. A Grafana dashboard shows the live signals, and
+`scripts/drift_report.py` builds an Evidently HTML report on the most recent requests.
+
+```powershell
+python -m scripts.build_reference --model-dir models/v1 --val-path data/processed/val.csv --n 2000 --output monitoring/reference.csv
+docker compose --profile monitoring up -d --build        # Grafana :3001, Prometheus :9090, Alertmanager :9093
+python -m scripts.simulate_traffic --url http://localhost:8000 --mode normal --n 300 --rate 5
+python -m scripts.simulate_traffic --url http://localhost:8000 --mode short  --n 500 --rate 5
+```
+
+The "short" mode sends only the first 1-3 words of each review, so the drift is **synthetic**: it
+demonstrates detection and alerting, not a real change in users. Full description, thresholds, alert
+table and limitations: [`docs/monitoring.md`](docs/monitoring.md).
+
 ## Configuration
 
 Docker Compose reads `.env` (copy it from `.env.example`; `.env` is git-ignored).
@@ -217,24 +252,29 @@ Docker Compose reads `.env` (copy it from `.env.example`; `.env` is git-ignored)
 | `MAX_BATCH_SIZE` / `MAX_LATENCY_MS` | `32` / `2000` | BentoML batching |
 | `CANARY_PCT` | `5` | share of traffic to the canary (1-100) |
 | `CANARY_ENABLED` | `1` | `0` = rollback to the stable model |
+| `DRIFT_WINDOW` / `DRIFT_MIN_SAMPLES` | `300` / `100` | drift window size / minimum requests before PSI is computed |
+| `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana login for the local demo stack (change if exposed) |
 
 A variable set in the shell (`$env:CANARY_PCT=25`) overrides `.env`.
 
 ## Project structure
 
 ```
-src/                  preprocessing, model, training, evaluation, inference, FastAPI app, MLflow helper
-scripts/              prepare_data, register_model, export_metrics, quality_gate, locust_summary, canary_check
+src/                  preprocessing, model, training, evaluation, inference, FastAPI app, monitoring, MLflow helper
+scripts/              prepare_data, register_model, export_metrics, quality_gate, locust_summary,
+                      canary_check, build_reference, simulate_traffic, drift_report
 configs/train.yaml    default training configuration
 params.yaml           DVC parameters (smoke-sized by default)
 dvc.yaml / dvc.lock   pipeline definition and lock file
 service.py            BentoML service (adaptive batching)
 canary/               nginx config template for the traffic split
+monitoring/           Prometheus, alert rules, Alertmanager, webhook receiver, Grafana provisioning,
+                      drift reference sample (reference.csv)
 loadtest/             Locust file
 benchmarks/           load-test summaries and raw Locust CSVs
 metrics/              eval.json (DVC), production.json and baseline.json (CI gate)
 notebooks/            Colab notebooks used for GPU training
-docs/                 canary rollout plan and log
+docs/                 canary rollout plan and log, monitoring guide
 tests/                pytest suite
 .github/workflows/    CI
 Dockerfile, Dockerfile.bento, docker-compose.yml, requirements*.txt, .env.example
@@ -258,11 +298,15 @@ configurations (about 15-32 minutes each at 60,000 samples) and logs them to MLf
 - Load-test numbers are from one machine, one run each, CPU-only.
 - v1 and v2 are the same configuration, so the canary does not compare two different models.
 - The DVC pipeline's default parameters are a smoke test, and the dataset is not in a DVC remote.
+- Monitoring watches two features (input length, confidence) with PSI. There are no ground-truth
+  labels in production, so accuracy itself is not monitored, and the demonstrated drift is synthetic.
+  Only the FastAPI service is instrumented.
 
-## Roadmap
+## Next steps (not implemented)
 
-- Monitoring: drift detection on input text length and model confidence (PSI), Prometheus metrics,
-  Grafana dashboard and an alert when PSI exceeds 0.25.
+- Collect delayed ground-truth labels to monitor accuracy, not only input drift.
+- Add embedding-based drift and per-class output drift.
+- Replace the demo webhook receiver with a real notification channel (Slack or e-mail).
 
 ## Dataset citation
 
