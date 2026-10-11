@@ -5,8 +5,13 @@ services:
       - "8000:8000"
     environment:
       MODEL_DIR: ${API_MODEL_DIR:-/app/models/v1}
+      MONITORING_REFERENCE: /app/monitoring/reference.csv
+      PREDICTION_LOG: /app/monitoring/data/predictions.jsonl
+      DRIFT_WINDOW: ${DRIFT_WINDOW:-300}
+      DRIFT_MIN_SAMPLES: ${DRIFT_MIN_SAMPLES:-100}
     volumes:
       - ./models:/app/models:ro
+      - ./monitoring:/app/monitoring
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
       interval: 15s
@@ -84,3 +89,51 @@ services:
         condition: service_healthy
       api_v2:
         condition: service_healthy
+
+  # Monitoring stack (the `api` service above exposes /metrics and computes drift):
+  #   docker compose --profile monitoring up -d --build
+  #   Prometheus :9090   Alertmanager :9093   Grafana :3001
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+  alertmanager:
+    profiles: ["monitoring"]
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+
+  alert_sink:
+    profiles: ["monitoring"]
+    image: python:3.11-slim
+    command: ["python", "-u", "/app/alert_sink.py"]
+    volumes:
+      - ./monitoring/alert_sink.py:/app/alert_sink.py:ro
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:11.3.0
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus

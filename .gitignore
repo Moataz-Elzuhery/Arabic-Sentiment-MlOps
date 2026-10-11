@@ -10,3 +10,6 @@ mlartifacts/
 outputs/
 
 .env
+
+monitoring/data/
+reports/

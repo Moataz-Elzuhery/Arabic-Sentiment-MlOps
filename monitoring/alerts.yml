@@ -1,0 +1,41 @@
+groups:
+  - name: sentiment-monitoring
+    rules:
+      # PSI rule of thumb: < 0.1 stable, 0.1-0.25 moderate shift, > 0.25 significant shift.
+      # The series only exists once the drift window holds enough requests.
+      - alert: DataDriftHigh
+        expr: sentiment_drift_psi > 0.25
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Input drift detected on {{ $labels.feature }}"
+          description: "PSI for {{ $labels.feature }} is {{ $value | printf \"%.2f\" }} (threshold 0.25)."
+
+      - alert: APIDown
+        expr: up{job="api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The sentiment API is not reachable by Prometheus"
+
+      - alert: HighErrorRate
+        expr: >
+          sum(rate(http_requests_total{status=~"5.."}[2m]))
+          / sum(rate(http_requests_total[2m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5% of requests fail with a 5xx status"
+
+      - alert: HighLatencyP95
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{path="/predict"}[2m]))) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency of /predict is above 1 second"

@@ -1,9 +1,12 @@
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel, Field
+
+from . import monitoring
 
 log = logging.getLogger("api")
 MODEL_DIR = os.getenv("MODEL_DIR", "models/v1")
@@ -23,6 +26,10 @@ class PredictResponse(BaseModel):
 async def lifespan(app: FastAPI):
     app.state.predictor = None
     try:
+        monitoring.configure_from_env()
+    except Exception:
+        log.exception("Could not configure monitoring")
+    try:
         from .inference import Predictor
         app.state.predictor = Predictor(MODEL_DIR)
         log.info("Model loaded from %s", MODEL_DIR)
@@ -32,6 +39,24 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Arabic Sentiment API", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    route = request.scope.get("route")
+    path = route.path if route else "unmatched"
+    if path != "/metrics":
+        monitoring.record_http(request.method, path, response.status_code,
+                               time.perf_counter() - start)
+    return response
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    body, content_type = monitoring.render_metrics()
+    return Response(content=body, media_type=content_type)
 
 
 @app.get("/health")
@@ -48,4 +73,6 @@ def predict(req: PredictRequest):
         raise HTTPException(status_code=503, detail="model not loaded")
     if not req.text.strip():
         raise HTTPException(status_code=422, detail="text must not be blank")
-    return predictor.predict([req.text])[0]
+    result = predictor.predict([req.text])[0]
+    monitoring.record_prediction(len(req.text), result)
+    return result

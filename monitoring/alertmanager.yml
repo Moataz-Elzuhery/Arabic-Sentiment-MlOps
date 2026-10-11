@@ -1,0 +1,12 @@
+route:
+  receiver: sink
+  group_by: [alertname, feature]
+  group_wait: 5s
+  group_interval: 30s
+  repeat_interval: 1h
+
+receivers:
+  - name: sink
+    webhook_configs:
+      - url: http://alert_sink:9000/alert
+        send_resolved: true
