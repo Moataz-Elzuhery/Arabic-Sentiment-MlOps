@@ -91,26 +91,70 @@ seed, so I do not claim any of them is better than another. The higher learning 
 clearly the worst. Neutral is the hardest class in every run (3-star reviews often mix praise and
 criticism).
 
+$readme = Get-Content README.md -Raw -Encoding UTF8
+$new = @'
 ## Quickstart
 
-Requirements: Python 3.12, Docker Desktop, Git.
+Requirements: Docker and Git. Python 3.12 is only needed to run the tests. To run the API you only
+need the trained model; the dataset is needed only to retrain.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-pytest -q
+### 1. Get the code and the model weights
+
+The weights (about 480 MB each) are published as a GitHub Release.
+
+Linux / macOS:
+```bash
+git clone https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps.git && cd Arabic-Sentiment-MlOps
+mkdir -p models/v1
+curl -fL -o models-v1.tar.gz https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v1.tar.gz
+echo "6b1b137271900720b83d8427b2bf14466ab9e8b68563259abd76164ad9d4cbe0  models-v1.tar.gz" | sha256sum -c -
+tar -xzf models-v1.tar.gz -C models/v1
 ```
 
-The trained weights are not in git (they are large). Put a trained model folder in `models/v1`
-(it needs `model.safetensors`, `config.json`, tokenizer files and `metrics.json`), then:
-
+Windows (PowerShell):
 ```powershell
-Copy-Item .env.example .env        # local settings, see "Configuration"
+git clone https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps.git; cd Arabic-Sentiment-MlOps
+New-Item -ItemType Directory -Force models\v1 | Out-Null
+curl.exe -fL -o models-v1.tar.gz https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v1.tar.gz
+(Get-FileHash models-v1.tar.gz -Algorithm SHA256).Hash.ToLower()    # expect 6b1b1372...d4cbe0
+tar -xzf models-v1.tar.gz -C models\v1
+```
+
+`models/v1` must now contain `model.safetensors`, `config.json`, the tokenizer files and `metrics.json`.
+For the canary profile also download `models-v2.tar.gz` from the same release into `models/v2`
+(sha256 `1f9e39dd471ce29c4811539be19f480e44365324f9daae551365cf901035d908`).
+
+### 2. Run the API
+
+```bash
+cp .env.example .env              # Windows: Copy-Item .env.example .env
 docker compose up -d --build api
+curl -s localhost:8000/health     # {"status":"healthy"}
+curl -s localhost:8000/predict -H "Content-Type: application/json" -d '{"text":"good product"}'
+```
+On Windows use `curl.exe`, or:
+```powershell
 Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -ContentType "application/json" -Body '{"text":"good product"}'
 ```
 
+### 3. Run the tests
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate    # Windows: python -m venv .venv; .\.venv\Scripts\Activate.ps1
+pip install -r requirements-ci.txt
+pytest -q
+```
+
+### Troubleshooting
+- `/health` returns 503: the model folder is missing or empty (`models/v1/model.safetensors`).
+- Container says "Started" but the port does not answer: `docker compose up -d --force-recreate api`.
+'@
+$pattern = '(?s)## Quickstart.*?(?=\r?\n## MLOps)'
+if ($readme -notmatch $pattern) { throw "Quickstart / MLOps headings not found, nothing changed" }
+$readme = [regex]::Replace($readme, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $new.TrimEnd() + "`n" })
+$readme = $readme -replace '(## Limitations\r?\n\r?\n)', "`$1- No DVC remote is configured; model weights are distributed via GitHub Releases.`n"
+[System.IO.File]::WriteAllText("$PWD\README.md", $readme, (New-Object System.Text.UTF8Encoding $false))
+git diff --stat README.md
 API contract:
 
 ```
