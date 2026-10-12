@@ -17,3 +17,6 @@ reports/
 *.tar.gz
 
 *.tar.gz
+
+monitoring/data/
+reports/
