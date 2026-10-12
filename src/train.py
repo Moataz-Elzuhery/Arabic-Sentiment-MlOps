@@ -130,7 +130,6 @@ def main():
     }
     trainer.save_model(str(out))
     tokenizer.save_pretrained(str(out))
-    shutil.rmtree(out / "checkpoints", ignore_errors=True)  # keep the output folder small
     shutil.rmtree(out / "checkpoints", ignore_errors=True)  # keep the output folder small (DVC / registry)
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False))
     print(json.dumps(metrics, indent=2, ensure_ascii=False))

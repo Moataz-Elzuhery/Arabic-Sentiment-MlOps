@@ -13,3 +13,7 @@ outputs/
 
 monitoring/data/
 reports/
+
+*.tar.gz
+
+*.tar.gz
