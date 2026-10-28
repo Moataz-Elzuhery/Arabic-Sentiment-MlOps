@@ -93,32 +93,58 @@ criticism).
 
 ## Quickstart
 
-Requirements: Python 3.12, Docker Desktop, Git.
+Requirements: Docker and Git (Python 3.12 only for the tests). To run the API you only need the
+trained model; the dataset is only needed to retrain.
+
+## Demo
+
+A Gradio app that talks to the running API: single review analysis with an optional star-rating check, batch analysis with CSV export, and a traffic simulator for the monitoring and canary demos.
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
+pip install -r requirements-demo.txt
+docker compose up -d --build api
+python app.py        # http://127.0.0.1:7860
+```
+
+### 1. Get the code and the model
+
+Linux / macOS:
+```bash
+git clone https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps.git && cd Arabic-Sentiment-MlOps
+mkdir -p models/v1
+curl -L https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v1.tar.gz | tar -xz -C models/v1
+```
+
+Windows (PowerShell):
+```powershell
+git clone https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps.git; cd Arabic-Sentiment-MlOps
+New-Item -ItemType Directory -Force models\v1 | Out-Null
+curl.exe -L https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v1.tar.gz -o models-v1.tar.gz
+tar -xzf models-v1.tar.gz -C models\v1
+```
+
+### 2. Run the API
+
+```bash
+cp .env.example .env              # Windows: Copy-Item .env.example .env
+docker compose up -d --build api
+curl -s localhost:8000/health     # {"status":"healthy"}
+curl -s localhost:8000/predict -H "Content-Type: application/json" -d '{"text":"good product"}'
+```
+Windows: use `curl.exe` or `Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -ContentType "application/json" -Body '{"text":"good product"}'`.
+
+### 3. Run the tests
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate    # Windows: python -m venv .venv; .\.venv\Scripts\Activate.ps1
+pip install -r requirements-ci.txt
 pytest -q
 ```
 
-The trained weights are not in git (they are large). Put a trained model folder in `models/v1`
-(it needs `model.safetensors`, `config.json`, tokenizer files and `metrics.json`), then:
-
-```powershell
-Copy-Item .env.example .env        # local settings, see "Configuration"
-docker compose up -d --build api
-Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -ContentType "application/json" -Body '{"text":"good product"}'
-```
-
-API contract:
-
-```
-POST /predict   {"text": "المنتج ممتاز جدًا"}
-             -> {"label": "positive", "confidence": 0.94, "model_version": "v1"}
-GET  /health -> {"status": "healthy"}        (503 while the model is not loaded)
-GET  /metrics -> Prometheus metrics
-```
+### Troubleshooting
+- `/health` returns 503: the model folder is missing or empty; `models/v1` must contain `model.safetensors`.
+- Port 8000 is busy: set `API_PORT=8001` in `.env` and recreate the container.
+- Container says "Started" but the port does not answer: `docker compose up -d --force-recreate api`.
 
 ## MLOps
 

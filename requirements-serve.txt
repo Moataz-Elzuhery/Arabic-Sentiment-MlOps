@@ -3,3 +3,4 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.5
 prometheus-client>=0.20
+torch==2.14.1

@@ -3,7 +3,7 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 COPY requirements-serve.txt .
 # CPU-only torch keeps the image much smaller
-RUN pip install torch --index-url https://download.pytorch.org/whl/cpu \
+RUN pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu \
  && pip install -r requirements-serve.txt
 COPY src ./src
 ENV MODEL_DIR=/app/models/v1

@@ -13,10 +13,7 @@ outputs/
 
 monitoring/data/
 reports/
-
 *.tar.gz
 
-*.tar.gz
-
-monitoring/data/
-reports/
+# VS Code markdown preview extension
+.offline-markdown-preview/
