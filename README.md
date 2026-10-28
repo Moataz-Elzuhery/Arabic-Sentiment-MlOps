@@ -34,7 +34,6 @@ The point of the project is the **system around the model**, not a record-breaki
 ## Architecture
 
 ![Architecture](docs/architecture.svg)
-```
 
 ## Results
 
