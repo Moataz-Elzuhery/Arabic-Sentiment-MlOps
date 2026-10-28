@@ -33,26 +33,7 @@ The point of the project is the **system around the model**, not a record-breaki
 
 ## Architecture
 
-```
-HARD reviews --DVC--> prepare --> train --> evaluate           (reproducible pipeline)
-                                    |
-                           MLflow (5 runs) --> Model Registry (v1 baseline, v2 production)
-                                    |
-                                  models/
-                                    |
-        +---------------------------+----------------------------+
-        |                           |                            |
-   FastAPI :8000              BentoML :3000                nginx router :8080
-   (single requests)       (adaptive batching)          95% -> api_v1 / 5% -> api_v2
-        |
-        | /metrics (latency, confidence, text length, PSI)
-        v
-   Prometheus :9090 --alerts--> Alertmanager :9093 --> webhook receiver
-        |
-        v
-   Grafana :3001 (dashboard)         Evidently (HTML drift report)
-
-GitHub Actions: Lint -> Tests -> Build Docker -> Quality gate (F1 vs baseline) -> Push image
+![Architecture](docs/architecture.svg)
 ```
 
 ## Results
