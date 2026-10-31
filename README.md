@@ -81,7 +81,7 @@ trained model; the dataset is only needed to retrain.
 A Gradio app that talks to the running API: single review analysis with an optional star-rating check, batch analysis with CSV export, and a traffic simulator for the monitoring and canary demos.
 
 ```powershell
-pip install -r requirements-demo.txt
+pip install -r requirements_demo.txt
 docker compose up -d --build api
 python app.py        # http://127.0.0.1:7860
 ```
