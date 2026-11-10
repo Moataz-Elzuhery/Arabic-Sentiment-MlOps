@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arabic-sentiment-mlops"
+version = "0.5.0"
+description = "Arabic hotel-review sentiment classification (AraBERT) with an end-to-end MLOps pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "transformers>=4.46",
+    "torch>=2.2",
+    "scikit-learn>=1.4",
+    "pandas>=2.0",
+    "pyyaml>=6.0",
+    "accelerate>=0.30",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.5",
+    "mlflow>=2.14",
+    "prometheus-client>=0.20",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools]
+packages = ["src", "scripts"]

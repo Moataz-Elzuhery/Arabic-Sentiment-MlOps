@@ -17,3 +17,4 @@ reports/
 
 # VS Code markdown preview extension
 .offline-markdown-preview/
+*.egg-info/
