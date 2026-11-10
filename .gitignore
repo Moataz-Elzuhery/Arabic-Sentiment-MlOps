@@ -12,7 +12,8 @@ outputs/
 .env
 
 monitoring/data/
-reports/
+reports/*
+!reports/mlflow_comparison.png
 *.tar.gz
 
 # VS Code markdown preview extension
