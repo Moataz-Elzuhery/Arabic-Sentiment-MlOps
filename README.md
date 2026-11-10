@@ -36,11 +36,11 @@ The point of the project is the **system around the model**, not a record-breaki
 
 | Tag | Session | What was added |
 |---|---|---|
-| v0.1.0 | 1 | AraBERT fine-tuning, FastAPI (`/predict`, `/health`), Docker |
-| v0.2.0 | 2 | MLflow tracking and registry, DVC pipeline, GitHub Actions CI/CD with quality gate |
+| v0.1.0 | 1-2 | AraBERT fine-tuning, FastAPI (`/predict`, `/health`), Docker, MLflow tracking and registry, DVC pipeline |
+| v0.2.0 | 2 | GitHub Actions CI/CD: lint, tests, Docker build, quality gate |
 | v0.3.0 | 3 | Locust load tests, BentoML adaptive batching, canary rollout |
-| v0.4.0 | 4 | Drift monitoring (PSI), Prometheus, Grafana, alerts |
-| - | 5 | Optimization (distillation, ONNX INT8, TensorRT FP16): not implemented, see Limitations |
+| - | 4 | Optimization (distillation, ONNX INT8, TensorRT FP16): not implemented, see Limitations |
+| v0.5.0 | 5 | Drift monitoring (PSI), Prometheus, Grafana, alerts |
 
 
 ## Architecture
@@ -168,6 +168,9 @@ python -m scripts.register_model --model-dir models/v1 --alias baseline
 python -m scripts.register_model --model-dir models/v2 --alias production
 mlflow ui --backend-store-uri sqlite:///mlflow.db     # http://127.0.0.1:5000
 ```
+
+![MLflow comparison of the 5 runs](reports/mlflow_comparison.png)
+![MLflow metrics of the 5 runs](reports/mlflow_metrics.png)
 
 ### DVC pipeline
 `dvc.yaml` defines `prepare` -> `train` -> `evaluate`; the raw dataset is tracked with
