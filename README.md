@@ -39,8 +39,9 @@ The point of the project is the **system around the model**, not a record-breaki
 | v0.1.0 | 1 | AraBERT fine-tuning, FastAPI (`/predict`, `/health`), Docker |
 | v0.2.0 | 2 | MLflow tracking and registry, DVC pipeline, GitHub Actions CI/CD with quality gate |
 | v0.3.0 | 3 | Locust load tests, BentoML adaptive batching, canary rollout |
-| - | 4 | Optimization (distillation, ONNX INT8, TensorRT FP16): not implemented, see Limitations |
-| v0.5.0 | 5 | Drift monitoring (PSI), Prometheus, Grafana, alerts |
+| v0.4.0 | 4 | Drift monitoring (PSI), Prometheus, Grafana, alerts |
+| - | 5 | Optimization (distillation, ONNX INT8, TensorRT FP16): not implemented, see Limitations |
+
 
 ## Architecture
 
