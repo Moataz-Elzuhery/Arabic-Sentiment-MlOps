@@ -47,8 +47,8 @@ stages:
       size: 894
     - path: src/train.py
       hash: md5
-      md5: 57a9aa0c945a4053bbc8c2611332ced1
-      size: 5452
+      md5: d1aab2e26b7bb7a06fb52a757558b789
+      size: 5506
     params:
       params.yaml:
         train:
@@ -59,8 +59,8 @@ stages:
     outs:
     - path: models/pipeline
       hash: md5
-      md5: 6c002a6d8995e48eaf71c3afa87e19b9.dir
-      size: 542590286
+      md5: 09d51c29b9a24dadb0835518072c48ca.dir
+      size: 542590287
       nfiles: 6
   evaluate:
     cmd: python -m src.evaluate --model-dir models/pipeline --test-path 
@@ -73,8 +73,8 @@ stages:
       size: 9719777
     - path: models/pipeline
       hash: md5
-      md5: 6c002a6d8995e48eaf71c3afa87e19b9.dir
-      size: 542590286
+      md5: 09d51c29b9a24dadb0835518072c48ca.dir
+      size: 542590287
       nfiles: 6
     - path: src/evaluate.py
       hash: md5
