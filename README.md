@@ -30,6 +30,17 @@ The point of the project is the **system around the model**, not a record-breaki
 | Serving & load testing | Locust baseline, BentoML with adaptive batching | Done |
 | Canary release | nginx 95/5 split, staged rollout, instant rollback | Done |
 | Monitoring | PSI drift on input length and confidence, Prometheus, Grafana, alerts, Evidently report | Done |
+| Optimization | Distillation, ONNX INT8, TensorRT FP16, batch scoring, benchmark | Not implemented (see Limitations) |
+
+## Changelog
+
+| Tag | Session | What was added |
+|---|---|---|
+| v0.1.0 | 1 | AraBERT fine-tuning, FastAPI (`/predict`, `/health`), Docker |
+| v0.2.0 | 2 | MLflow tracking and registry, DVC pipeline, GitHub Actions CI/CD with quality gate |
+| v0.3.0 | 3 | Locust load tests, BentoML adaptive batching, canary rollout |
+| - | 4 | Optimization (distillation, ONNX INT8, TensorRT FP16): not implemented, see Limitations |
+| v0.5.0 | 5 | Drift monitoring (PSI), Prometheus, Grafana, alerts |
 
 ## Architecture
 
@@ -76,17 +87,10 @@ criticism).
 Requirements: Docker and Git (Python 3.12 only for the tests). To run the API you only need the
 trained model; the dataset is only needed to retrain.
 
-## Demo
-
-A Gradio app that talks to the running API: single review analysis with an optional star-rating check, batch analysis with CSV export, and a traffic simulator for the monitoring and canary demos.
-
-```powershell
-pip install -r requirements_demo.txt
-docker compose up -d --build api
-python app.py        # http://127.0.0.1:7860
-```
-
 ### 1. Get the code and the model
+
+The trained weights are release assets (about 500 MB per model), not part of the git history:
+[releases/tag/models-v1](https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/tag/models-v1).
 
 Linux / macOS:
 ```bash
@@ -101,6 +105,21 @@ git clone https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps.git; cd Arab
 New-Item -ItemType Directory -Force models\v1 | Out-Null
 curl.exe -L https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v1.tar.gz -o models-v1.tar.gz
 tar -xzf models-v1.tar.gz -C models\v1
+```
+
+The canary profile also needs the second model (`models/v2`), from the same release:
+
+Linux / macOS:
+```bash
+mkdir -p models/v2
+curl -L https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v2.tar.gz | tar -xz -C models/v2
+```
+
+Windows (PowerShell):
+```powershell
+New-Item -ItemType Directory -Force models\v2 | Out-Null
+curl.exe -L https://github.com/Moataz-Elzuhery/Arabic-Sentiment-MlOps/releases/download/models-v1/models-v2.tar.gz -o models-v2.tar.gz
+tar -xzf models-v2.tar.gz -C models\v2
 ```
 
 ### 2. Run the API
@@ -126,6 +145,16 @@ pytest -q
 - Port 8000 is busy: set `API_PORT=8001` in `.env` and recreate the container.
 - Container says "Started" but the port does not answer: `docker compose up -d --force-recreate api`.
 
+## Demo
+
+A Gradio app that talks to the running API: single review analysis with an optional star-rating check, batch analysis with CSV export, and a traffic simulator for the monitoring and canary demos.
+
+```bash
+pip install -r Demo/requirements_demo.txt
+docker compose up -d --build api
+python Demo/app.py        # http://127.0.0.1:7860
+```
+
 ## MLOps
 
 ### MLflow
@@ -133,7 +162,7 @@ Five runs are tracked (parameters, validation/test metrics, training time). The 
 on Colab (`notebooks/train_sweep_colab.ipynb`) and the tracking database was copied back. Models are
 registered with `scripts/register_model.py`:
 
-```powershell
+```bash
 python -m scripts.register_model --model-dir models/v1 --alias baseline
 python -m scripts.register_model --model-dir models/v2 --alias production
 mlflow ui --backend-store-uri sqlite:///mlflow.db     # http://127.0.0.1:5000
@@ -143,7 +172,7 @@ mlflow ui --backend-store-uri sqlite:///mlflow.db     # http://127.0.0.1:5000
 `dvc.yaml` defines `prepare` -> `train` -> `evaluate`; the raw dataset is tracked with
 `data/raw/unbalanced-reviews.txt.dvc`. Stages are cached and re-run only when their inputs change.
 
-```powershell
+```bash
 dvc repro            # whole pipeline
 dvc dag              # show the graph
 dvc metrics show
@@ -153,7 +182,7 @@ Important: the default `params.yaml` is **smoke-sized** (200 samples, 1 epoch) s
 finishes in minutes on a CPU. Its metrics (`metrics/eval.json`, F1 ~0.25) are therefore not the
 model's quality. The registered v1/v2 models were trained on Colab with the same `src.train` code
 at 60,000 samples. The full-scale parameters are noted in `params.yaml`. The dataset itself is not
-stored in a DVC remote, so download `unbalanced-reviews.tsv.rar` from the `data/` folder of the HARD repository, extract it
+stored in a DVC remote, so download `unbalanced-reviews.rar` from the `data/` folder of the HARD repository, extract it
 (it is a RAR archive; use 7-Zip or WinRAR) and place the extracted file at
 `data/raw/unbalanced-reviews.txt` (rename it if needed) before `dvc repro`.
 
@@ -199,7 +228,7 @@ Notes:
 - BentoML's `max_latency_ms` must be larger than the model's latency under load. With 50 ms, about
   half of the requests were rejected with HTTP 503 in my tests; the default here is 2000 ms.
 
-```powershell
+```bash
 docker compose --profile bento up -d --build bento     # BentoML on :3000, POST /predict {"texts": ["..."]}
 ```
 
@@ -209,7 +238,7 @@ docker compose --profile bento up -d --build bento     # BentoML on :3000, POST 
 `api_v2` candidate) behind an nginx router on port 8080. Each request is assigned independently, so
 shares are statistical. A check with 400 requests at `CANARY_PCT=5` gave 95.8% v1 / 4.2% v2.
 
-```powershell
+```bash
 python -m scripts.canary_check --url http://localhost:8080 --n 400 --expected 5
 ```
 
@@ -236,7 +265,7 @@ to a webhook receiver, and the alert resolves when traffic returns to normal. Th
 for API down, 5xx rate and p95 latency. A Grafana dashboard shows the live signals, and
 `scripts/drift_report.py` builds an Evidently HTML report on the most recent requests.
 
-```powershell
+```bash
 python -m scripts.build_reference --model-dir models/v1 --val-path data/processed/val.csv --n 2000 --output monitoring/reference.csv
 docker compose --profile monitoring up -d --build        # Grafana :3001, Prometheus :9090, Alertmanager :9093
 python -m scripts.simulate_traffic --url http://localhost:8000 --mode normal --n 300 --rate 5
@@ -261,7 +290,7 @@ Docker Compose reads `.env` (copy it from `.env.example`; `.env` is git-ignored)
 | `DRIFT_WINDOW` / `DRIFT_MIN_SAMPLES` | `300` / `100` | drift window size / minimum requests before PSI is computed |
 | `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana login for the local demo stack (change if exposed) |
 
-A variable set in the shell (`$env:CANARY_PCT=25`) overrides `.env`.
+A variable set in the shell overrides `.env` (PowerShell: `$env:CANARY_PCT=25`, bash/zsh: `export CANARY_PCT=25`).
 
 ## Project structure
 
@@ -269,6 +298,7 @@ A variable set in the shell (`$env:CANARY_PCT=25`) overrides `.env`.
 src/                  preprocessing, model, training, evaluation, inference, FastAPI app, monitoring, MLflow helper
 scripts/              prepare_data, register_model, export_metrics, quality_gate, locust_summary,
                       canary_check, build_reference, simulate_traffic, drift_report
+Demo/                 Gradio demo (app.py, requirements_demo.txt)
 configs/train.yaml    default training configuration
 params.yaml           DVC parameters (smoke-sized by default)
 dvc.yaml / dvc.lock   pipeline definition and lock file
@@ -280,9 +310,10 @@ loadtest/             Locust file
 benchmarks/           load-test summaries and raw Locust CSVs
 metrics/              eval.json (DVC), production.json and baseline.json (CI gate)
 notebooks/            Colab notebooks used for GPU training
-docs/                 canary rollout plan and log, monitoring guide
+docs/                 architecture diagram, canary rollout plan and log, monitoring guide
 tests/                pytest suite
 .github/workflows/    CI
+pyproject.toml        package metadata (pip install -e .)
 Dockerfile, Dockerfile.bento, docker-compose.yml, requirements*.txt, .env.example
 ```
 
@@ -307,12 +338,14 @@ configurations (about 15-32 minutes each at 60,000 samples) and logs them to MLf
 - Monitoring watches two features (input length, confidence) with PSI. There are no ground-truth
   labels in production, so accuracy itself is not monitored, and the demonstrated drift is synthetic.
   Only the FastAPI service is instrumented.
+- The optimization module (6-layer distillation, ONNX INT8 export, TensorRT FP16, batch scoring and an original vs. optimized benchmark) was not implemented because of limited time and because GPU work was only possible on a free Colab T4, which is not a fair environment for benchmarking against the local CPU setup.
 
 ## Next steps (not implemented)
 
 - Collect delayed ground-truth labels to monitor accuracy, not only input drift.
 - Add embedding-based drift and per-class output drift.
 - Replace the demo webhook receiver with a real notification channel (Slack or e-mail).
+- Export the model to ONNX INT8 and compare it with the PyTorch baseline using the existing Locust setup (CPU only).
 
 ## Dataset citation
 
